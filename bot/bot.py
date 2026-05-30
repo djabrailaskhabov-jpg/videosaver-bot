@@ -42,14 +42,14 @@ pending_yt: dict[int, dict] = {}
 texts = {
     "ru": {
         "start": "👋 Привет! Выбери язык:",
-        "send_link": "✅ Теперь отправь ссылку на фото, видео или Reels из Instagram, TikTok или YouTube.",
+        "send_link": "✅ Теперь отправь ссылку на фото, видео или Reels из Instagram, TikTok, YouTube или Twitter/X.",
         "downloading": "⏳ Скачиваю... Подожди немного",
         "fetching_info": "⏳ Получаю информацию о видео...",
         "error": "❌ Не удалось скачать. Ссылка может быть приватной или Instagram временно заблокировал запрос. Попробуй позже.",
         "yt_error": "❌ Не удалось получить информацию о видео. Проверь ссылку и попробуй снова.",
         "yt_download_error": "❌ Не удалось скачать видео. YouTube мог заблокировать запрос или видео слишком большое для этого качества. Попробуй качество ниже.",
         "too_large": "❌ Файл слишком большой (больше 50 МБ) и не может быть отправлен.",
-        "not_supported": "❌ Поддерживаю только Instagram, TikTok и YouTube.",
+        "not_supported": "❌ Поддерживаю только Instagram, TikTok, YouTube и Twitter/X.",
         "done": "✅ Готово!\n@VideoSaver95bot",
         "choose_quality": "🎬 Выбери качество:",
         "audio_only": "🎵 Только аудио (MP3)",
@@ -57,14 +57,14 @@ texts = {
     },
     "en": {
         "start": "👋 Hello! Choose language:",
-        "send_link": "✅ Send link to photo, video or Reels from Instagram, TikTok or YouTube.",
+        "send_link": "✅ Send link to photo, video or Reels from Instagram, TikTok, YouTube or Twitter/X.",
         "downloading": "⏳ Downloading... Please wait",
         "fetching_info": "⏳ Fetching video info...",
         "error": "❌ Failed to download. The link may be private or Instagram is temporarily blocking the request. Try again later.",
         "yt_error": "❌ Could not get video info. Check the link and try again.",
         "yt_download_error": "❌ Could not download the video. YouTube may have blocked the request or the file is too large for this quality. Try a lower quality.",
         "too_large": "❌ The file is too large (over 50 MB) and cannot be sent.",
-        "not_supported": "❌ Only Instagram, TikTok, YouTube supported.",
+        "not_supported": "❌ Only Instagram, TikTok, YouTube and Twitter/X supported.",
         "done": "✅ Done!\n@VideoSaver95bot",
         "choose_quality": "🎬 Choose quality:",
         "audio_only": "🎵 Audio only (MP3)",
@@ -122,6 +122,10 @@ def collect_media_files(tmpdir: str) -> list[dict]:
 
 def is_youtube(url: str) -> bool:
     return any(d in url.lower() for d in ["youtube.com", "youtu.be"])
+
+
+def is_twitter(url: str) -> bool:
+    return any(d in url.lower() for d in ["twitter.com", "x.com", "t.co"])
 
 
 def format_duration(seconds: int | None) -> str:
@@ -501,7 +505,8 @@ async def handle_message(message: types.Message) -> None:
     url = message.text.strip()
     user_id = message.from_user.id
 
-    if not any(d in url.lower() for d in ["instagram.com", "tiktok.com", "youtube.com", "youtu.be"]):
+    SUPPORTED = ["instagram.com", "tiktok.com", "youtube.com", "youtu.be", "twitter.com", "x.com", "t.co"]
+    if not any(d in url.lower() for d in SUPPORTED):
         if url.startswith("http"):
             await message.answer(get_text(user_id, "not_supported"))
         return
@@ -544,7 +549,7 @@ async def handle_message(message: types.Message) -> None:
         await info_msg.edit_text(caption, reply_markup=keyboard, parse_mode="HTML")
         return
 
-    # Instagram / TikTok — direct download
+    # Instagram / TikTok / Twitter — direct download
     wait_msg = await message.answer(get_text(user_id, "downloading"))
     is_instagram = "instagram.com" in url.lower()
 
