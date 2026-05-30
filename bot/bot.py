@@ -296,7 +296,7 @@ async def download_gallery_dl(url: str, tmpdir: str) -> tuple[list[dict] | None,
             json.dump(config, f)
 
         cmd = ["gallery-dl", "--config", config_path, "--destination", tmpdir, "--no-part", "--quiet", url]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
             logger.warning("gallery-dl stderr: %s", result.stderr[:300])
 
@@ -411,11 +411,19 @@ async def race_instagram(url: str, base_tmpdir: str) -> tuple[list[dict] | None,
         asyncio.create_task(_guarded(download_cobalt(url, dirs[3]))),
     ]
 
+    # Overall timeout: cancel everything after 40 seconds
+    deadline = asyncio.get_event_loop().time() + 40
     pending = set(tasks)
     while pending:
-        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            break
+        done, pending = await asyncio.wait(pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            files, title = task.result()
+            try:
+                files, title = task.result()
+            except Exception:
+                continue
             if files:
                 for t in pending:
                     t.cancel()
@@ -423,6 +431,11 @@ async def race_instagram(url: str, base_tmpdir: str) -> tuple[list[dict] | None,
                     await asyncio.gather(*pending, return_exceptions=True)
                 return files, title
 
+    # Cancel remaining tasks
+    for t in pending:
+        t.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
     return None, ""
 
 
