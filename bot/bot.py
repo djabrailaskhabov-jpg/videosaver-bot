@@ -199,11 +199,23 @@ def build_quality_keyboard(user_id: int, available: list[int]) -> InlineKeyboard
 
 # ── Downloader: yt-dlp with quality ──────────────────────────────────────────
 
+def _write_instagram_cookies(tmpdir: str) -> str | None:
+    """Write Instagram session cookie in Netscape format for yt-dlp."""
+    if not INSTAGRAM_SESSION_ID:
+        return None
+    cookie_path = os.path.join(tmpdir, "cookies.txt")
+    with open(cookie_path, "w") as f:
+        f.write("# Netscape HTTP Cookie File\n")
+        f.write(f".instagram.com\tTRUE\t/\tTRUE\t9999999999\tsessionid\t{INSTAGRAM_SESSION_ID}\n")
+        f.write(f"instagram.com\tTRUE\t/\tTRUE\t9999999999\tsessionid\t{INSTAGRAM_SESSION_ID}\n")
+    return cookie_path
+
+
 async def download_ydl(url: str, tmpdir: str, quality: int | str = 720) -> tuple[list[dict] | None, str]:
     headers: dict = {"User-Agent": random.choice(USER_AGENTS)}
+    is_instagram_url = "instagram.com" in url.lower()
 
-    if INSTAGRAM_SESSION_ID and "instagram.com" in url.lower():
-        headers["Cookie"] = f"sessionid={INSTAGRAM_SESSION_ID}"
+    if is_instagram_url:
         headers["Referer"] = "https://www.instagram.com/"
 
     if quality == "audio":
@@ -237,6 +249,11 @@ async def download_ydl(url: str, tmpdir: str, quality: int | str = 720) -> tuple
     }
     if not is_audio_only:
         ydl_opts["merge_output_format"] = "mp4"
+    # Pass Instagram cookies via file (header method deprecated in yt-dlp)
+    if is_instagram_url:
+        cookie_file = _write_instagram_cookies(tmpdir)
+        if cookie_file:
+            ydl_opts["cookiefile"] = cookie_file
 
     def _run():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
