@@ -28,7 +28,9 @@ from aiogram.types import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+if not TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set!")
 INSTAGRAM_SESSION_ID = os.environ.get("INSTAGRAM_SESSION_ID", "")
 
 bot = Bot(token=TOKEN)
